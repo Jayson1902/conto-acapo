@@ -1,0 +1,1053 @@
+@if (group) {
+  <div class="min-h-[100dvh] bg-slate-900 text-slate-100 p-4 sm:p-6 pb-24 sm:pb-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+      <!-- Navigazione e Header del Gruppo -->
+      <div class="space-y-3 border-b border-slate-800 pb-4">
+        <!-- Barra di Navigazione e Condivisione -->
+        <div class="flex justify-between items-center">
+          <button
+            (click)="goBack()"
+            class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-400 hover:text-indigo-400 transition cursor-pointer"
+          >
+            <span>←</span> Torna a tutti i gruppi
+          </button>
+
+          <button
+            (click)="shareGroup()"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition cursor-pointer"
+            title="Copia link o condividi su WhatsApp"
+          >
+            <span>🔗</span>
+            <span>{{ isCopied ? 'Link copiato! ✓' : 'Condividi con amici' }}</span>
+          </button>
+        </div>
+
+        <header class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl sm:text-3xl font-bold text-indigo-400 tracking-tight">
+                {{ group.name }}
+              </h1>
+              <button
+                type="button"
+                (click)="openEditGroupModal()"
+                title="Modifica nome e descrizione gruppo"
+                class="opacity-60 hover:opacity-100 hover:text-indigo-300 p-1.5 rounded-lg hover:bg-slate-800 transition text-sm text-slate-400 cursor-pointer"
+              >
+                ✏️
+              </button>
+            </div>
+            @if (group.description) {
+              <p class="text-xs sm:text-sm text-slate-400 mt-0.5">{{ group.description }}</p>
+            }
+          </div>
+
+          <!-- Partecipanti e Bottone Aggiungi Amico -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            @for (member of members; track member.id) {
+              <span
+                class="px-2.5 py-1 bg-slate-800 rounded-full text-xs font-semibold text-slate-300 border border-slate-700/80 shadow-sm flex items-center gap-1.5"
+              >
+                {{ member.name }}
+                @if (member.id === currentUserId) {
+                  <span
+                    class="px-1.5 py-px bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded text-[10px] font-bold"
+                    >tu</span
+                  >
+                }
+                <button
+                  type="button"
+                  (click)="removeMember(member.id)"
+                  title="Rimuovi dal gruppo"
+                  class="text-slate-400 hover:text-rose-400 hover:bg-slate-700/60 rounded-full w-4 h-4 flex items-center justify-center transition cursor-pointer text-[10px]"
+                >
+                  ✕
+                </button>
+              </span>
+            }
+
+            <button
+              (click)="openAddMemberModal()"
+              class="px-2.5 py-1 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1"
+              title="Aggiungi un altro amico a questo gruppo"
+            >
+              <span>+</span> Aggiungi amico
+            </button>
+          </div>
+        </header>
+      </div>
+
+      <!-- Riepilogo: totale del gruppo + situazione personale -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+          <p class="text-xs text-slate-400">Totale speso dal gruppo</p>
+          <p class="text-2xl font-bold text-slate-100 mt-1">{{ formatEuro(totalSpent) }}</p>
+          <p class="text-xs text-slate-500 mt-1">
+            {{ expenses.length }} {{ expenses.length === 1 ? 'spesa' : 'spese' }} &bull;
+            {{ members.length }} partecipanti
+          </p>
+        </div>
+
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+          @if (currentUser; as me) {
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs text-slate-400">
+                Ciao <span class="font-semibold text-slate-200">{{ me.name }}</span>
+              </p>
+              <button
+                type="button"
+                (click)="openWhoAmIModal()"
+                class="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 font-medium cursor-pointer"
+              >
+                Non sei tu?
+              </button>
+            </div>
+
+            @if (myBalance > 0.005) {
+              <p class="text-2xl font-bold text-emerald-400 mt-1">
+                Ti devono {{ formatEuro(myBalance) }}
+              </p>
+            } @else if (myBalance < -0.005) {
+              <p class="text-2xl font-bold text-rose-400 mt-1">
+                Devi dare {{ formatEuro(-myBalance) }}
+              </p>
+            } @else {
+              <p class="text-2xl font-bold text-slate-200 mt-1">Sei in pari 🎉</p>
+            }
+
+            @if (myPayments.length > 0 || myCredits.length > 0) {
+              <ul class="mt-2 space-y-0.5 text-xs">
+                @for (p of myPayments; track p.toUserId) {
+                  <li class="text-slate-300">
+                    Dai <strong class="text-rose-400">{{ formatEuro(p.amount) }}</strong> a
+                    <strong>{{ getUserName(p.toUserId) }}</strong>
+                  </li>
+                }
+                @for (c of myCredits; track c.fromUserId) {
+                  <li class="text-slate-300">
+                    <strong>{{ getUserName(c.fromUserId) }}</strong> ti deve
+                    <strong class="text-emerald-400">{{ formatEuro(c.amount) }}</strong>
+                  </li>
+                }
+              </ul>
+            }
+          } @else {
+            <p class="text-xs text-slate-400">La tua situazione</p>
+            <p class="text-sm text-slate-300 mt-1">
+              Scegli il tuo nome per vedere subito quanto devi dare o ricevere.
+            </p>
+            <button
+              type="button"
+              (click)="openWhoAmIModal()"
+              class="mt-2.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
+            >
+              Chi sei?
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Griglia Principale -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Sezione Spese Registrate -->
+        <section
+          class="order-2 md:order-1 bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-700/50 space-y-4"
+        >
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg sm:text-xl font-semibold text-slate-200">Spese effettuate</h2>
+            <button
+              (click)="openAddModal()"
+              class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs sm:text-sm font-medium rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>+</span> Nuova spesa
+            </button>
+          </div>
+
+          <div class="space-y-2.5">
+            @if (expenses.length === 0) {
+              <div
+                class="p-8 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl text-sm space-y-2"
+              >
+                <p>Nessuna spesa registrata in questo gruppo.</p>
+                <button
+                  (click)="openAddModal()"
+                  class="text-indigo-400 hover:text-indigo-300 font-semibold underline cursor-pointer"
+                >
+                  Registra la prima spesa
+                </button>
+              </div>
+            } @else {
+              @for (expense of expenses; track expense.id) {
+                <div
+                  (click)="openEditModal(expense)"
+                  title="Tocca per modificare"
+                  class="p-3.5 bg-slate-800/90 rounded-lg border border-slate-700/80 flex justify-between items-center gap-2 transition hover:border-indigo-500/50 active:scale-[0.99] cursor-pointer"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-xl sm:text-2xl p-2 bg-slate-700/50 rounded-lg shrink-0">
+                      {{ getCategoryIcon(expense.category) }}
+                    </span>
+                    <div class="min-w-0">
+                      <p class="font-medium text-slate-100 text-sm sm:text-base truncate">
+                        {{ expense.description }}
+                      </p>
+                      <p class="text-xs text-slate-400 break-words">
+                        {{ formatDate(expense.date) }} &bull; Pagato da
+                        <span class="text-indigo-400 font-medium">{{
+                          getUserName(expense.paidByUserId)
+                        }}</span>
+                      </p>
+                      <p class="text-xs text-slate-500 break-words">
+                        Diviso tra {{ getSplitDescription(expense) }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-1.5 shrink-0 pl-2">
+                    <span class="text-base sm:text-lg font-bold text-emerald-400">{{
+                      formatEuro(expense.amount)
+                    }}</span>
+                    <span class="text-slate-500 text-lg leading-none">›</span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <!-- Pagamenti già effettuati -->
+          @if (settlements.length > 0) {
+            <div class="pt-2 space-y-2.5">
+              <h3 class="text-sm font-semibold text-slate-300">Pagamenti registrati</h3>
+              @for (s of settlements; track s.id) {
+                <div
+                  class="p-3 bg-slate-800/60 rounded-lg border border-emerald-700/30 flex justify-between items-center gap-2"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-xl p-2 bg-emerald-900/30 rounded-lg shrink-0">💸</span>
+                    <div class="min-w-0">
+                      <p class="text-sm text-slate-100 break-words">
+                        <span class="font-semibold text-rose-400">{{
+                          getUserName(s.fromUserId)
+                        }}</span>
+                        ha pagato
+                        <span class="font-semibold text-emerald-400">{{
+                          getUserName(s.toUserId)
+                        }}</span>
+                      </p>
+                      <p class="text-xs text-slate-400">{{ formatDate(s.date) }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="text-sm sm:text-base font-bold text-slate-200">{{
+                      formatEuro(s.amount)
+                    }}</span>
+                    <button
+                      (click)="deleteSettlement(s)"
+                      title="Annulla pagamento"
+                      class="opacity-50 hover:opacity-100 hover:text-rose-400 p-1.5 rounded-md hover:bg-slate-700/60 transition text-xs sm:text-sm text-slate-400 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+
+        <!-- Sezione Saldi e Debiti Semplificati -->
+        <section
+          class="order-1 md:order-2 bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-700/50 space-y-5"
+        >
+          <!-- Chi deve dare a chi -->
+          <div>
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg sm:text-xl font-semibold text-slate-200">Chi deve dare a chi</h2>
+                <button
+                  type="button"
+                  (click)="openInfoModal()"
+                  class="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 border border-slate-700 flex items-center justify-center text-xs font-bold transition cursor-pointer"
+                  title="Spiegazione delle modalità di calcolo"
+                >
+                  ℹ️
+                </button>
+              </div>
+
+              <!-- Selettore Modalità Calcolo -->
+              <div class="flex bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-xs">
+                <button
+                  type="button"
+                  (click)="setDebtMode('direct')"
+                  [class.bg-indigo-600]="debtMode === 'direct'"
+                  [class.text-white]="debtMode === 'direct'"
+                  [class.shadow-md]="debtMode === 'direct'"
+                  [class.text-slate-400]="debtMode !== 'direct'"
+                  class="px-2.5 py-1 rounded-lg font-medium transition cursor-pointer"
+                  title="Calcola i debiti diretti spesa per spesa tra ciascuna coppia"
+                >
+                  Spesa per spesa
+                </button>
+                <button
+                  type="button"
+                  (click)="setDebtMode('simplified')"
+                  [class.bg-indigo-600]="debtMode === 'simplified'"
+                  [class.text-white]="debtMode === 'simplified'"
+                  [class.shadow-md]="debtMode === 'simplified'"
+                  [class.text-slate-400]="debtMode !== 'simplified'"
+                  class="px-2.5 py-1 rounded-lg font-medium transition cursor-pointer"
+                  title="Minimizza i passaggi di denaro aggregando i saldi"
+                >
+                  Semplificato
+                </button>
+              </div>
+            </div>
+
+            <!-- Descrizione dinamica con link rapido alla spiegazione -->
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <p class="text-xs text-slate-400 leading-relaxed">
+                @if (debtMode === 'direct') {
+                  <span
+                    >👉 <strong>Spesa per spesa:</strong> Ogni spesa è divisa tra i partecipanti e
+                    compensata direttamente tra le persone.</span
+                  >
+                } @else {
+                  <span
+                    >⚡ <strong>Semplificato:</strong> Minimizza il numero totale di bonifici
+                    aggregando i debiti del gruppo.</span
+                  >
+                }
+              </p>
+              <button
+                type="button"
+                (click)="openInfoModal()"
+                class="text-[11px] text-indigo-400 hover:text-indigo-300 whitespace-nowrap underline underline-offset-2 font-medium shrink-0 cursor-pointer"
+              >
+                Come funziona?
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              @if (displayedDebts.length === 0) {
+                <div class="text-sm text-slate-400 p-3 bg-slate-800/30 rounded-lg">
+                  Tutti i saldi sono in pari! 🎉
+                </div>
+              } @else {
+                @for (debt of displayedDebts; track debt.fromUserId + debt.toUserId + debtMode) {
+                  <div
+                    [class.ring-1]="isMyDebt(debt)"
+                    [class.ring-indigo-400]="isMyDebt(debt)"
+                    class="p-3 bg-slate-800/80 rounded-lg border border-slate-700 flex items-center justify-between text-xs sm:text-sm shadow-sm"
+                  >
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                      <span class="font-semibold text-rose-400">{{
+                        getUserName(debt.fromUserId)
+                      }}</span>
+                      <span class="text-slate-400 text-xs">➔</span>
+                      <span class="font-semibold text-emerald-400">{{
+                        getUserName(debt.toUserId)
+                      }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="font-bold text-indigo-300">{{ formatEuro(debt.amount) }}</span>
+                      <button
+                        type="button"
+                        (click)="openSettleModal(debt)"
+                        title="Segna questo debito come pagato"
+                        class="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-600/40 rounded-lg text-[11px] font-semibold transition active:scale-95 cursor-pointer"
+                      >
+                        ✓ Pagato
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+
+          <hr class="border-slate-700/50" />
+
+          <!-- Saldi Singoli -->
+          <div>
+            <h2 class="text-lg sm:text-xl font-semibold text-slate-200 mb-3">Saldi individuali</h2>
+            <div class="space-y-2">
+              @for (b of balances; track b.userId) {
+                <div class="p-2.5 bg-slate-800/40 rounded-lg space-y-1.5">
+                  <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-300 font-medium">
+                      {{ getUserName(b.userId) }}
+                      @if (b.userId === currentUserId) {
+                        <span class="ml-1 text-[10px] text-indigo-300 font-bold">tu</span>
+                      }
+                    </span>
+                    <span
+                      [class.text-emerald-400]="b.amount > 0"
+                      [class.text-rose-400]="b.amount < 0"
+                      [class.text-slate-400]="b.amount === 0"
+                      class="font-semibold"
+                    >
+                      {{ formatSigned(b.amount) }}
+                    </span>
+                  </div>
+                  <div class="h-1 rounded-full bg-slate-700/50 overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all duration-300"
+                      [class.bg-emerald-500]="b.amount > 0"
+                      [class.bg-rose-500]="b.amount < 0"
+                      [style.width.%]="balanceBarWidth(b.amount)"
+                    ></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Footer Credits -->
+      <footer class="pt-8 pb-4 text-center border-t border-slate-800/80 mt-10 space-y-1">
+        <p class="text-xs text-slate-400">
+          <span class="font-semibold text-slate-300">ContoAcapo</span> &copy; 2026 &bull; Ideato e
+          creato da <span class="text-indigo-400 font-semibold">Clark Jayson Mendoza</span>
+        </p>
+      </footer>
+    </div>
+
+    <!-- Pulsante rapido mobile fluttuante (+ FAB) -->
+    <div
+      class="fixed right-4 z-30 sm:hidden transition-all duration-200"
+      style="bottom: calc(1rem + env(safe-area-inset-bottom, 0px))"
+      [class.translate-y-24]="fabHidden"
+      [class.opacity-0]="fabHidden"
+      [class.pointer-events-none]="fabHidden"
+    >
+      <button
+        (click)="openAddModal()"
+        class="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 active:scale-90 text-white shadow-xl shadow-indigo-950 flex items-center justify-center text-2xl font-bold transition cursor-pointer"
+        title="Nuova spesa"
+      >
+        +
+      </button>
+    </div>
+
+    <!-- Modale Registra Pagamento -->
+    @if (isSettleModalOpen) {
+      <div
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      >
+        <div
+          class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150 space-y-4"
+        >
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-100">Registra pagamento</h3>
+              <p class="text-xs text-slate-400">Conferma che i soldi sono stati dati</p>
+            </div>
+            <button
+              (click)="closeSettleModal()"
+              class="text-slate-400 hover:text-slate-200 text-lg p-1.5 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <p class="text-sm text-slate-300 leading-relaxed">
+            <strong class="text-rose-400">{{ getUserName(settleFromUserId) }}</strong>
+            ha dato a
+            <strong class="text-emerald-400">{{ getUserName(settleToUserId) }}</strong>
+          </p>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Importo (€)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              [(ngModel)]="settleAmount"
+              (keyup.enter)="confirmSettlement()"
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+            <p class="text-[11px] text-slate-500 mt-1">
+              Se è stata pagata solo una parte, modifica l'importo: il resto rimane da saldare.
+            </p>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <button
+              type="button"
+              (click)="closeSettleModal()"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition cursor-pointer"
+            >
+              Annulla
+            </button>
+            <button
+              type="button"
+              (click)="confirmSettlement()"
+              [disabled]="!settleAmount || settleAmount <= 0"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition shadow cursor-pointer"
+            >
+              Conferma pagamento
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modale "Chi sei?" -->
+    @if (isWhoAmIModalOpen) {
+      <div
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      >
+        <div
+          class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm max-h-[92vh] flex flex-col p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+        >
+          <div class="border-b border-slate-800 pb-3 mb-4 shrink-0">
+            <h3 class="text-lg font-bold text-slate-100">Chi sei?</h3>
+            <p class="text-xs text-slate-400">
+              Così ti mostro subito quanto devi dare o ricevere. La scelta resta salvata solo su
+              questo dispositivo.
+            </p>
+          </div>
+
+          <div class="space-y-2 overflow-y-auto pr-1">
+            @for (member of members; track member.id) {
+              <button
+                type="button"
+                (click)="selectMe(member.id)"
+                [class.border-indigo-500]="member.id === currentUserId"
+                [class.border-slate-700]="member.id !== currentUserId"
+                class="w-full px-4 py-3 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-100 text-sm font-semibold rounded-xl border transition cursor-pointer flex items-center justify-between"
+              >
+                <span>{{ member.name }}</span>
+                @if (member.id === currentUserId) {
+                  <span class="text-xs text-indigo-300">✓ attuale</span>
+                }
+              </button>
+            }
+          </div>
+
+          <div class="pt-4 border-t border-slate-800 mt-4 shrink-0 text-center">
+            <button
+              type="button"
+              (click)="closeWhoAmIModal()"
+              class="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2 cursor-pointer"
+            >
+              {{ currentUserId ? 'Annulla' : 'Sto solo guardando' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modale Aggiungi Amico al Gruppo -->
+    @if (isAddMemberModalOpen) {
+      <div
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      >
+        <div
+          class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-5 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150 space-y-4"
+        >
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-base font-bold text-slate-100">Aggiungi amico al gruppo</h3>
+            <button
+              (click)="closeAddMemberModal()"
+              class="text-slate-400 hover:text-slate-200 text-lg p-1 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1"
+              >Nome del partecipante</label
+            >
+            <input
+              type="text"
+              [(ngModel)]="newMemberName"
+              (keyup.enter)="confirmAddMember()"
+              placeholder="Es. Luca, Giulia, Andrea..."
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <button
+              type="button"
+              (click)="closeAddMemberModal()"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition cursor-pointer"
+            >
+              Annulla
+            </button>
+            <button
+              type="button"
+              (click)="confirmAddMember()"
+              [disabled]="!newMemberName.trim()"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition shadow cursor-pointer"
+            >
+              Aggiungi
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modale Aggiungi Nuova Spesa -->
+    @if (isAddModalOpen) {
+      <div
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      >
+        <div
+          class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+        >
+          <!-- Header Modale -->
+          <div
+            class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4 shrink-0"
+          >
+            <div>
+              <h3 class="text-lg font-semibold text-slate-100">
+                {{ editingExpenseId ? 'Modifica spesa' : 'Nuova spesa' }}
+              </h3>
+              <p class="text-xs text-slate-400">
+                {{
+                  editingExpenseId
+                    ? 'Modifica i dati della spesa'
+                    : 'Scegli chi ha pagato e per chi è la spesa'
+                }}
+              </p>
+            </div>
+            <button
+              (click)="closeAddModal()"
+              class="text-slate-400 hover:text-slate-200 text-lg p-1.5 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Form Spesa Scrollabile -->
+          <div class="space-y-4 overflow-y-auto pr-1">
+            <!-- Descrizione -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Descrizione spesa</label>
+              <input
+                type="text"
+                [(ngModel)]="newExpenseDescription"
+                placeholder="Es. Cena sushi, Aperitivo navigli, Benzina..."
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+              />
+            </div>
+
+            <!-- Importo e Categoria -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Importo (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  [(ngModel)]="newExpenseAmount"
+                  placeholder="0.00"
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Categoria</label>
+                <select
+                  [(ngModel)]="newExpenseCategory"
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                >
+                  @for (cat of categories; track cat.id) {
+                    <option [value]="cat.id">{{ cat.icon }} {{ cat.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <!-- Chi ha pagato -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1"
+                >Chi ha anticipato i soldi?</label
+              >
+              <select
+                [(ngModel)]="newExpensePaidBy"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+              >
+                @for (member of members; track member.id) {
+                  <option [value]="member.id">{{ member.name }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- Per chi è la spesa e come dividerla -->
+            <div class="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700 space-y-3">
+              <div class="flex justify-between items-start gap-3 text-xs">
+                <div>
+                  <span class="block text-slate-300 font-semibold">Per chi è questa spesa?</span>
+                  <span class="block text-slate-500 mt-0.5"
+                    >Chi ha pagato può non essere incluso: se ha offerto a un amico, seleziona solo
+                    l'amico.</span
+                  >
+                </div>
+                <button
+                  type="button"
+                  (click)="toggleSelectAllSplit()"
+                  class="text-indigo-400 hover:text-indigo-300 font-medium transition cursor-pointer shrink-0"
+                >
+                  {{
+                    newExpenseSplitBetween.length === members.length
+                      ? 'Deseleziona tutti'
+                      : 'Seleziona tutti'
+                  }}
+                </button>
+              </div>
+
+              <!-- Chips Cliccabili dei Partecipanti -->
+              <div class="flex flex-wrap gap-2">
+                @for (member of members; track member.id) {
+                  <button
+                    type="button"
+                    (click)="toggleSplitMember(member.id)"
+                    [class.bg-indigo-600]="isMemberSelected(member.id)"
+                    [class.border-indigo-500]="isMemberSelected(member.id)"
+                    [class.text-white]="isMemberSelected(member.id)"
+                    [class.shadow-md]="isMemberSelected(member.id)"
+                    [class.bg-slate-800]="!isMemberSelected(member.id)"
+                    [class.border-slate-700]="!isMemberSelected(member.id)"
+                    [class.text-slate-400]="!isMemberSelected(member.id)"
+                    class="px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <span>{{ isMemberSelected(member.id) ? '✓' : '+' }}</span>
+                    <span>{{ member.name }}</span>
+                  </button>
+                }
+              </div>
+
+              <!-- Modalità di divisione -->
+              <div>
+                <p class="text-[11px] text-slate-500 mb-1">Come dividerla</p>
+                <div class="flex bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-xs">
+                  @for (mode of splitModes; track mode.id) {
+                    <button
+                      type="button"
+                      (click)="setSplitMode(mode.id)"
+                      [class.bg-indigo-600]="newExpenseSplitMode === mode.id"
+                      [class.text-white]="newExpenseSplitMode === mode.id"
+                      [class.shadow-md]="newExpenseSplitMode === mode.id"
+                      [class.text-slate-400]="newExpenseSplitMode !== mode.id"
+                      class="flex-1 px-2 py-1.5 rounded-lg font-medium transition cursor-pointer"
+                    >
+                      {{ mode.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Valori per ciascun partecipante (solo se non in parti uguali) -->
+              @if (newExpenseSplitMode !== 'equal' && newExpenseSplitBetween.length > 0) {
+                <div class="space-y-2">
+                  @for (member of members; track member.id) {
+                    @if (isMemberSelected(member.id)) {
+                      <div class="flex items-center gap-2">
+                        <span class="flex-1 min-w-0 text-sm text-slate-200 truncate">{{
+                          member.name
+                        }}</span>
+                        <div class="relative w-32 shrink-0">
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            [ngModel]="newExpenseSplitValues[member.id]"
+                            (ngModelChange)="setSplitValue(member.id, $event)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-3 pr-12 py-2 text-right text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                          />
+                          <span
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-500 pointer-events-none"
+                            >{{ splitUnit }}</span
+                          >
+                        </div>
+                        <span class="w-20 text-right text-xs font-semibold text-emerald-400">{{
+                          formatEuro(previewShare(member.id))
+                        }}</span>
+                      </div>
+                    }
+                  }
+                </div>
+
+                @if (newExpenseSplitMode === 'exact' || newExpenseSplitMode === 'percent') {
+                  <button
+                    type="button"
+                    (click)="fillEqualValues()"
+                    class="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2 font-medium cursor-pointer"
+                  >
+                    Dividi in parti uguali
+                  </button>
+                }
+                @if (newExpenseSplitMode === 'shares') {
+                  <p class="text-[11px] text-slate-500">
+                    Esempio: 2 quote a una persona e 1 a un'altra → pagano 2/3 e 1/3 della spesa.
+                  </p>
+                }
+              }
+
+              <!-- Errori e riepilogo -->
+              @if (newExpenseSplitBetween.length === 0) {
+                <p class="text-xs text-rose-400 font-medium">
+                  ⚠️ Seleziona almeno una persona per cui è la spesa.
+                </p>
+              } @else if (splitError) {
+                <p class="text-xs text-rose-400 font-medium">⚠️ {{ splitError }}</p>
+              } @else if (expenseSummaryLines.length > 0) {
+                <div class="pt-2 border-t border-slate-700/60 space-y-0.5 text-xs">
+                  <p class="text-slate-500">Risultato:</p>
+                  @for (line of expenseSummaryLines; track $index) {
+                    <p class="text-slate-200 font-medium">{{ line }}</p>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Footer Modale -->
+          <div class="flex justify-end gap-2 pt-4 border-t border-slate-800 mt-4 shrink-0">
+            @if (editingExpenseId) {
+              <button
+                type="button"
+                (click)="deleteEditingExpense()"
+                class="mr-auto px-3 py-2.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg text-sm font-medium transition cursor-pointer"
+              >
+                🗑 Elimina
+              </button>
+            }
+            <button
+              type="button"
+              (click)="closeAddModal()"
+              class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-lg text-sm transition cursor-pointer"
+            >
+              Annulla
+            </button>
+            <button
+              type="button"
+              (click)="saveExpense()"
+              [disabled]="
+                !newExpenseDescription ||
+                !newExpenseAmount ||
+                newExpenseAmount <= 0 ||
+                newExpenseSplitBetween.length === 0 ||
+                !!splitError
+              "
+              class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition shadow cursor-pointer"
+            >
+              {{ editingExpenseId ? 'Salva modifiche' : 'Aggiungi spesa' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modale Spiegazione Calcoli (Guida per gli utenti) -->
+    @if (isInfoModalOpen) {
+      <div
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4"
+      >
+        <div
+          class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col p-5 sm:p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+        >
+          <!-- Header Modale -->
+          <div
+            class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4 shrink-0"
+          >
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">💡</span>
+              <div>
+                <h3 class="text-base sm:text-lg font-bold text-slate-100">
+                  Come funzionano i calcoli?
+                </h3>
+                <p class="text-xs text-slate-400">
+                  Guida alle 2 modalità di ripartizione dei debiti
+                </p>
+              </div>
+            </div>
+            <button
+              (click)="closeInfoModal()"
+              class="text-slate-400 hover:text-slate-200 text-lg p-1.5 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Contenuto Scrollabile -->
+          <div class="space-y-4 overflow-y-auto pr-1 text-xs sm:text-sm text-slate-300">
+            <!-- 1. Scheda Modalità Spesa per spesa -->
+            <div class="p-4 bg-slate-800/60 border border-indigo-500/30 rounded-xl space-y-2.5">
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded text-xs font-bold"
+                >
+                  Dettagliata
+                </span>
+                <h4 class="font-bold text-slate-100 text-sm sm:text-base">
+                  1. Spesa per spesa (diretto)
+                </h4>
+              </div>
+              <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                Ogni singola spesa inserita viene divisa equamente tra i partecipanti. I debiti
+                vengono poi calcolati e compensati direttamente tra chi ha anticipato i soldi e chi
+                ne ha beneficiato.
+              </p>
+              <div
+                class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/60 text-xs space-y-1.5"
+              >
+                <p class="font-semibold text-slate-200">🔍 Esempio pratico:</p>
+                <p class="text-slate-400">
+                  Se Dennis anticipa <strong>112 €</strong> per il viaggio in auto (quota per uno:
+                  28 €) e Denny offre un aperitivo da <strong>37 €</strong> (quota per uno: 9,25 €):
+                </p>
+                <p class="text-indigo-300 font-medium">
+                  ➔ Denny deve restituire direttamente a Dennis la differenza esatta:
+                  <strong>18,75 €</strong> (28 € − 9,25 €).
+                </p>
+              </div>
+              <p class="text-[11px] text-slate-400 italic">
+                ✓ <strong>Ideale per:</strong> Chi desidera sapere esattamente chi sta rimborsando
+                chi per ciascuna attività.
+              </p>
+            </div>
+
+            <!-- 2. Scheda Modalità Semplificata -->
+            <div class="p-4 bg-slate-800/60 border border-teal-500/30 rounded-xl space-y-2.5">
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-2 py-0.5 bg-teal-500/20 text-teal-300 border border-teal-500/40 rounded text-xs font-bold"
+                >
+                  Predefinita
+                </span>
+                <h4 class="font-bold text-slate-100 text-sm sm:text-base">
+                  2. Semplificato (meno passaggi)
+                </h4>
+              </div>
+              <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                L'applicazione calcola il saldo complessivo di tutto il gruppo e trova la
+                combinazione matematica che estingue tutti i debiti con il minor numero di pagamenti
+                possibili.
+              </p>
+              <div
+                class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/60 text-xs space-y-1.5"
+              >
+                <p class="font-semibold text-slate-200">🔍 Esempio pratico:</p>
+                <p class="text-slate-400">
+                  Invece di far fare a tutti piccoli rimborsi incrociati, chi deve dare denaro paga
+                  direttamente chi è a maggior credito, azzerando i debiti in soli 2 o 3 bonifici
+                  totali.
+                </p>
+              </div>
+              <p class="text-[11px] text-slate-400 italic">
+                ✓ <strong>Ideale per:</strong> Gruppi numerosi, vacanze con tante spese o
+                coinquilini, per evitare una catena infinita di transazioni.
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer Modale -->
+          <div class="flex justify-end pt-4 border-t border-slate-800 mt-4 shrink-0">
+            <button
+              type="button"
+              (click)="closeInfoModal()"
+              class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-lg text-sm font-semibold transition cursor-pointer"
+            >
+              Ho capito!
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modale Modifica Nome e Descrizione Gruppo -->
+    @if (isEditGroupModalOpen) {
+      <div
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      >
+        <div
+          class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150 space-y-4"
+        >
+          <!-- Header Modale -->
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-100">Modifica dati gruppo</h3>
+              <p class="text-xs text-slate-400">Aggiorna nome e descrizione del gruppo</p>
+            </div>
+            <button
+              (click)="closeEditGroupModal()"
+              class="text-slate-400 hover:text-slate-200 text-lg p-1.5 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="space-y-3.5">
+            <!-- Nome Gruppo -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Nome del gruppo *</label>
+              <input
+                type="text"
+                [(ngModel)]="editGroupName"
+                placeholder="Es. Vacanza, Weekend, Coinquilini..."
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+              />
+            </div>
+
+            <!-- Descrizione Gruppo -->
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1"
+                >Descrizione o date (opzionale)</label
+              >
+              <input
+                type="text"
+                [(ngModel)]="editGroupDescription"
+                placeholder="Es. Weekend a Roma, 17-18 Ottobre 2026..."
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+              />
+            </div>
+          </div>
+
+          <!-- Footer Modale -->
+          <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <button
+              type="button"
+              (click)="closeEditGroupModal()"
+              class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition cursor-pointer"
+            >
+              Annulla
+            </button>
+            <button
+              type="button"
+              (click)="saveGroupInfo()"
+              [disabled]="!editGroupName.trim() || isSavingGroup"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition shadow cursor-pointer flex items-center gap-1.5"
+            >
+              @if (isSavingGroup) {
+                <span>⏳ Salvataggio...</span>
+              } @else {
+                <span>Salva modifiche</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+} @else {
+  <!-- Skeleton di caricamento -->
+  <div class="min-h-[100dvh] bg-slate-900 p-4 sm:p-6">
+    <div class="max-w-4xl mx-auto space-y-6 animate-pulse">
+      <div class="h-4 w-40 bg-slate-800 rounded"></div>
+      <div class="h-9 w-56 bg-slate-800 rounded-lg"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="h-24 bg-slate-800/60 rounded-xl"></div>
+        <div class="h-24 bg-slate-800/60 rounded-xl"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="h-72 bg-slate-800/50 rounded-xl"></div>
+        <div class="h-72 bg-slate-800/50 rounded-xl"></div>
+      </div>
+    </div>
+  </div>
+}

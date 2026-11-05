@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Funzioni di supporto ----------
+
+    // ID del gruppo: "g_" + 16 caratteri esadecimali casuali (li genera l'app).
+    // L'ID funziona da "chiave segreta": chi non lo conosce non può leggere il gruppo.
+    function validGroupId(id) {
+      return id.matches('g_[0-9a-f]{16}');
+    }
+
+    function shortString(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    // Verifica che il documento gruppo esista già prima di permettere modifiche/eliminazioni.
+    // Questo impedisce di creare documenti vuoti tramite delete su ID non esistenti.
+    function groupExists(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId));
+    }
+
+    function validGroup(d) {
+      return d.keys().hasOnly(['name', 'description', 'members', 'createdAt'])
+        && d.keys().hasAll(['name', 'members', 'createdAt'])
+        && shortString(d.name, 100)
+        && d.name.size() > 0
+        && (!('description' in d) || shortString(d.description, 300))
+        && d.members is list
+        && d.members.size() >= 1
+        && d.members.size() <= 50;
+    }
+
+    function validExpense(d, groupId) {
+      return d.keys().hasOnly([
+          'groupId', 'description', 'amount', 'paidByUserId',
+          'splitBetweenUserIds', 'date', 'category', 'splitMode', 'splitValues'
+        ])
+        && d.keys().hasAll(['groupId', 'description', 'amount', 'paidByUserId', 'splitBetweenUserIds', 'date'])
+        && d.groupId == groupId
+        && shortString(d.description, 200)
+        && d.description.size() > 0
+        && d.amount is number && d.amount > 0 && d.amount < 1000000
+        && shortString(d.paidByUserId, 50)
+        && d.paidByUserId.size() > 0
+        && d.splitBetweenUserIds is list
+        && d.splitBetweenUserIds.size() >= 1
+        && d.splitBetweenUserIds.size() <= 50
+        && shortString(d.date, 40)
+        && (!('category' in d) || shortString(d.category, 30))
+        && (!('splitMode' in d) || d.splitMode in ['equal', 'exact', 'percent', 'shares'])
+        && (!('splitValues' in d) || d.splitValues is map);
+    }
+
+    function validSettlement(d, groupId) {
+      return d.keys().hasOnly(['groupId', 'fromUserId', 'toUserId', 'amount', 'date'])
+        && d.keys().hasAll(['groupId', 'fromUserId', 'toUserId', 'amount', 'date'])
+        && d.groupId == groupId
+        && shortString(d.fromUserId, 50)
+        && d.fromUserId.size() > 0
+        && shortString(d.toUserId, 50)
+        && d.toUserId.size() > 0
+        && d.fromUserId != d.toUserId
+        && d.amount is number && d.amount > 0 && d.amount < 1000000
+        && shortString(d.date, 40);
+    }
+
+    // ---------- Gruppi ----------
+    match /groups/{groupId} {
+      allow get: if true;       // si può leggere un gruppo solo conoscendo il suo ID...
+      allow list: if false;     // ...ma NON elencare tutti i gruppi
+
+      allow create: if validGroupId(groupId) && validGroup(request.resource.data);
+
+      // L'aggiornamento richiede che il gruppo esista già (no scritture su ID arbitrari)
+      allow update: if groupExists(groupId) && validGroup(request.resource.data);
+
+      // La cancellazione richiede che il gruppo esista (evita richieste su ID casuali)
+      allow delete: if groupExists(groupId);
+
+      // ---------- Spese del gruppo ----------
+      match /expenses/{expenseId} {
+        allow read: if groupExists(groupId);
+        allow create, update: if groupExists(groupId) && validExpense(request.resource.data, groupId);
+        allow delete: if groupExists(groupId);
+      }
+
+      // ---------- Pagamenti del gruppo ----------
+      match /settlements/{settlementId} {
+        allow read: if groupExists(groupId);
+        allow create, update: if groupExists(groupId) && validSettlement(request.resource.data, groupId);
+        allow delete: if groupExists(groupId);
+      }
+    }
+
+    // Tutto il resto (comprese le vecchie collezioni globali 'expenses' e 'settlements')
+    // è negato di default.
+  }
+}

@@ -1,0 +1,467 @@
+<div class="min-h-screen bg-slate-900 text-slate-100 p-4 sm:p-6 pb-24 sm:pb-6">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header Principale -->
+    <header
+      class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-800 pb-5"
+    >
+      <div>
+        <div class="flex items-center gap-2.5">
+          <svg class="w-9 h-9 shrink-0" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient
+                id="logoGrad"
+                x1="0"
+                y1="0"
+                x2="40"
+                y2="40"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#818cf8" />
+                <stop offset="1" stop-color="#34d399" />
+              </linearGradient>
+            </defs>
+            <rect width="40" height="40" rx="11" fill="url(#logoGrad)" />
+            <text
+              x="20"
+              y="28"
+              text-anchor="middle"
+              font-size="23"
+              font-weight="800"
+              fill="#0f172a"
+              font-family="system-ui, sans-serif"
+            >
+              €
+            </text>
+          </svg>
+          <h1
+            class="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-teal-300 to-emerald-400"
+          >
+            ContoAcapo
+          </h1>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          I tuoi gruppi privati per dividere le spese tra amici
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <button
+          (click)="openJoinModal()"
+          class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs sm:text-sm font-semibold rounded-xl border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+        >
+          <span>🔗</span> Entra con link
+        </button>
+
+        <button
+          (click)="openCreateModal()"
+          class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-lg shadow-indigo-950 flex items-center gap-1.5 transition cursor-pointer"
+        >
+          <span class="text-base leading-none">+</span> Nuovo Gruppo
+        </button>
+      </div>
+    </header>
+
+    <!-- Lista Gruppi Personali -->
+    <div>
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-base sm:text-lg font-semibold text-slate-200">I miei gruppi</h2>
+        <span class="text-xs text-slate-500 inline-flex items-center gap-1.5">
+          <svg
+            class="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+            />
+          </svg>
+          Solo chi ha il link può accedere
+        </span>
+      </div>
+
+      @if (isLoading) {
+        <!-- Skeleton di caricamento -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 animate-pulse">
+          <div class="h-52 bg-slate-800/60 border border-slate-700/50 rounded-2xl"></div>
+          <div
+            class="h-52 bg-slate-800/40 border border-slate-700/40 rounded-2xl hidden md:block"
+          ></div>
+        </div>
+      } @else if (groups.length === 0) {
+        <!-- Stato Vuoto (Onboarding) -->
+        <div
+          class="p-8 sm:p-12 text-center bg-slate-800/40 border border-slate-700/60 rounded-2xl space-y-5 my-6"
+        >
+          <div
+            class="w-16 h-16 bg-indigo-950/60 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner"
+          >
+            👥
+          </div>
+          <div class="max-w-md mx-auto space-y-2">
+            <h3 class="text-xl font-bold text-slate-100">Nessun gruppo sul tuo dispositivo</h3>
+            <p class="text-xs sm:text-sm text-slate-400">
+              I gruppi sono completamente privati. Crea un nuovo gruppo con i tuoi amici o incolla
+              il link invito di un gruppo a cui sei stato invitato.
+            </p>
+          </div>
+          <div class="flex justify-center gap-3 flex-wrap">
+            <button
+              (click)="openCreateModal()"
+              class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-900/40 inline-flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span>+</span> Crea Nuovo Gruppo
+            </button>
+            <button
+              (click)="openJoinModal()"
+              class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-xl border border-slate-700 inline-flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span>🔗</span> Ho un link invito
+            </button>
+          </div>
+        </div>
+      } @else {
+        <!-- Griglia Gruppi Personali -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          @for (group of sortedGroups; track group.id) {
+            <div
+              (click)="openGroup(group.id)"
+              class="p-5 bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/50 rounded-2xl transition duration-150 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between gap-4 group shadow-md"
+            >
+              <div>
+                <div class="flex justify-between items-start gap-2">
+                  <h3
+                    class="text-xl font-bold text-slate-100 group-hover:text-indigo-300 transition min-w-0 break-words"
+                  >
+                    {{ group.name }}
+                  </h3>
+
+                  <!-- Menu ⋯ -->
+                  <div class="relative shrink-0">
+                    <button
+                      type="button"
+                      (click)="toggleMenu(group.id, $event)"
+                      aria-label="Opzioni del gruppo"
+                      class="w-8 h-8 -mr-1.5 -mt-1 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700/60 transition text-lg leading-none cursor-pointer"
+                    >
+                      ⋯
+                    </button>
+                    @if (openMenuGroupId === group.id) {
+                      <div
+                        (click)="$event.stopPropagation()"
+                        class="absolute right-0 mt-1 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-20 p-1"
+                      >
+                        <button
+                          type="button"
+                          (click)="forgetGroup(group.id, $event)"
+                          class="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-200 hover:bg-slate-800 hover:text-rose-300 transition cursor-pointer"
+                        >
+                          Rimuovi dalla mia lista
+                          <span class="block text-[11px] text-slate-500 mt-0.5"
+                            >Il gruppo resta per gli altri membri</span
+                          >
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                @if (group.description) {
+                  <p class="text-xs text-slate-400 mt-1 line-clamp-2">
+                    {{ group.description }}
+                  </p>
+                }
+
+                <!-- Partecipanti -->
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                  @for (member of group.members; track member.id) {
+                    <span
+                      class="px-2.5 py-0.5 bg-slate-900/80 text-slate-300 rounded-full text-xs font-medium border border-slate-700/50"
+                    >
+                      {{ member.name }}
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <!-- Stato del gruppo: totale speso + situazione -->
+              @if (summaries[group.id]; as s) {
+                <div class="pt-3 border-t border-slate-700/50 flex justify-between items-end gap-3">
+                  <div>
+                    <p class="text-[11px] text-slate-500">Totale speso</p>
+                    <p class="text-base font-bold text-slate-100">{{ formatEuro(s.total) }}</p>
+                    <p class="text-[11px] text-slate-500">
+                      {{ s.expenseCount }} {{ s.expenseCount === 1 ? 'spesa' : 'spese' }}
+                    </p>
+                  </div>
+
+                  @if (s.expenseCount === 0) {
+                    <span
+                      class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-700/40 text-slate-400 border border-slate-600/50"
+                      >Nessuna spesa</span
+                    >
+                  } @else if (s.myBalance !== null) {
+                    @if (s.myBalance > 0.005) {
+                      <span
+                        class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                        >Ti devono {{ formatEuro(s.myBalance) }}</span
+                      >
+                    } @else if (s.myBalance < -0.005) {
+                      <span
+                        class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30"
+                        >Devi dare {{ formatEuro(-s.myBalance) }}</span
+                      >
+                    } @else {
+                      <span
+                        class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                        >Sei in pari ✓</span
+                      >
+                    }
+                  } @else if (s.pendingPayments === 0) {
+                    <span
+                      class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                      >Tutto in pari ✓</span
+                    >
+                  } @else {
+                    <span
+                      class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                      >{{ s.pendingPayments }}
+                      {{ s.pendingPayments === 1 ? 'pagamento' : 'pagamenti' }} da fare</span
+                    >
+                  }
+                </div>
+              } @else {
+                <div class="pt-3 border-t border-slate-700/50 animate-pulse">
+                  <div class="h-3 w-20 bg-slate-700/50 rounded mb-2"></div>
+                  <div class="h-5 w-28 bg-slate-700/50 rounded"></div>
+                </div>
+              }
+
+              <!-- Riepilogo e Azione -->
+              <div class="flex justify-between items-center text-xs">
+                <div class="text-slate-400">
+                  <span class="text-slate-200 font-semibold">{{ group.members.length }}</span> amici
+                  nel gruppo
+                </div>
+                <span
+                  class="text-indigo-400 font-semibold group-hover:translate-x-1 transition inline-flex items-center gap-1"
+                >
+                  Apri ➔
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Footer Credits / Proprietà -->
+    <footer class="pt-8 pb-4 text-center border-t border-slate-800/80 mt-10 space-y-1">
+      <p class="text-xs text-slate-400">
+        <span class="font-semibold text-slate-300">ContoAcapo</span> &copy; 2026 &bull; Ideato e
+        creato da <span class="text-indigo-400 font-semibold">Clark Jayson Mendoza</span>
+      </p>
+    </footer>
+  </div>
+
+  <!-- Pulsante rapido mobile fluttuante (+ FAB) -->
+  <div class="fixed bottom-5 right-5 sm:hidden z-30">
+    <button
+      (click)="openCreateModal()"
+      class="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 active:scale-90 text-white shadow-xl shadow-indigo-950 flex items-center justify-center text-2xl font-bold transition cursor-pointer"
+      title="Crea Gruppo"
+    >
+      +
+    </button>
+  </div>
+
+  <!-- Modale Entra con Link o Codice -->
+  @if (isJoinModalOpen) {
+    <div
+      class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150 space-y-4"
+      >
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-100">Entra in un Gruppo</h3>
+            <p class="text-xs text-slate-400">Incolla il link o il codice ricevuto da un amico</p>
+          </div>
+          <button
+            (click)="closeJoinModal()"
+            class="text-slate-400 hover:text-slate-200 text-lg p-1.5 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Link o Codice Gruppo</label>
+          <input
+            type="text"
+            [(ngModel)]="joinCodeInput"
+            (keyup.enter)="joinGroup()"
+            placeholder="Es. https://conto-acapo.web.app/group/g_abc123"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+          />
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+          <button
+            type="button"
+            (click)="closeJoinModal()"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition cursor-pointer"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            (click)="joinGroup()"
+            [disabled]="!joinCodeInput.trim()"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition shadow cursor-pointer"
+          >
+            Entra nel Gruppo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modale Crea Nuovo Gruppo -->
+  @if (isCreateModalOpen) {
+    <div
+      class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92vh] flex flex-col p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+      >
+        <!-- Header Modale -->
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4 shrink-0">
+          <div>
+            <h3 class="text-lg font-bold text-slate-100">Crea Nuovo Gruppo Privato</h3>
+            <p class="text-xs text-slate-400">Solo chi riceverà il link potrà vederlo</p>
+          </div>
+          <button
+            (click)="closeCreateModal()"
+            class="text-slate-400 hover:text-slate-200 text-lg p-1.5 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Form Scrollabile -->
+        <div class="space-y-4 overflow-y-auto pr-1">
+          <!-- Nome Gruppo -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Nome del Gruppo *</label>
+            <input
+              type="text"
+              [(ngModel)]="newGroupName"
+              placeholder="Es. Vacanza Weekend, Gita a Roma, Coinquilini..."
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+          </div>
+
+          <!-- Descrizione (opzionale) -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1"
+              >Descrizione (facoltativa)</label
+            >
+            <input
+              type="text"
+              [(ngModel)]="newGroupDescription"
+              placeholder="Es. Spese comuni per il viaggio di luglio"
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+          </div>
+
+          <!-- Aggiungi Partecipanti -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">
+              Partecipanti (amici) * <span class="text-slate-500">(almeno 2 persone)</span>
+            </label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                [(ngModel)]="newMemberInput"
+                (keyup.enter)="addMemberToNewGroup()"
+                placeholder="Nome amico (es. Marco, Sara, Io...)"
+                class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+              />
+              <button
+                type="button"
+                (click)="addMemberToNewGroup()"
+                [disabled]="!newMemberInput.trim()"
+                class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-indigo-400 font-semibold rounded-lg border border-slate-700 text-sm transition cursor-pointer"
+              >
+                + Aggiungi
+              </button>
+            </div>
+
+            <!-- Chips Membri Inseriti -->
+            <div class="mt-3 flex flex-wrap gap-2">
+              @if (newGroupMembers.length === 0) {
+                <p class="text-xs text-amber-400/80 italic">
+                  💡 Inserisci almeno due nomi per poter dividere le spese.
+                </p>
+              } @else {
+                @for (name of newGroupMembers; track $index) {
+                  <span
+                    class="px-3 py-1 bg-indigo-950/70 border border-indigo-700/60 text-indigo-200 rounded-full text-xs font-medium flex items-center gap-1.5 shadow-sm"
+                  >
+                    {{ name }}
+                    <button
+                      type="button"
+                      (click)="removeMemberFromNewGroup($index)"
+                      class="text-indigo-400 hover:text-rose-400 font-bold leading-none cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </span>
+                }
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Messaggio di Errore -->
+        @if (errorMessage) {
+          <div
+            class="p-3 bg-rose-950/80 border border-rose-800 rounded-lg text-rose-200 text-xs leading-relaxed"
+          >
+            {{ errorMessage }}
+          </div>
+        }
+
+        <!-- Footer Modale -->
+        <div class="flex justify-end gap-2 pt-4 border-t border-slate-800 mt-4 shrink-0">
+          <button
+            type="button"
+            (click)="closeCreateModal()"
+            [disabled]="isSubmitting"
+            class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 rounded-lg text-sm transition cursor-pointer"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            (click)="createGroup()"
+            [disabled]="!newGroupName.trim() || isSubmitting"
+            class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition shadow cursor-pointer flex items-center gap-2"
+          >
+            @if (isSubmitting) {
+              <span>⏳ Creazione in corso...</span>
+            } @else {
+              <span>Crea Gruppo Privato</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
